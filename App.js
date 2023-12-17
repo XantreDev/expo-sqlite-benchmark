@@ -16,6 +16,7 @@ import { SQLiteNext } from "./expo-sqlite-next";
 /**
  * 
  * @typedef Time
+ * @property {QuerySize} size
  * @property {number[]} load
  * @property {number[]} access
  */
@@ -45,19 +46,22 @@ import { SQLiteNext } from "./expo-sqlite-next";
  * @property {(a: number) => Promise<void>} addData
  * @property {() => Promise<void>} createDB
  * @property {() => Promise<SQLiteRecord[]>} query
+ * @property {() => SQLiteRecord[]} [querySync]
  * @property {() => Promise<SQLiteRecord[]>} querySmall
+ * @property {() => SQLiteRecord[]} [querySmallSync]
  */
+
 
 /**
  * 
  * @param {SQLiteImpl} impl 
- * @param {'small' | 'big'} size
+ * @param {QuerySize} size
  */
 async function queryDB(impl, size) {
-  let times = /** @type {Time} */ ({ load: [], access: [] })
+  let times = /** @type {Time} */ ({ load: [], access: [], size })
   for (let i = 0; i < 10; i++) {
     performance.mark("queryStart");
-    const result = await impl[size === 'big' ? 'query' : 'querySmall']();
+    const result = await impl[size === 'big-async' ? 'query' : size === 'big-sync' ? 'querySync' : size === 'small-async' ? 'querySmall' : 'querySmallSync']();
     let measurement = performance.measure("queryEnd", "queryStart");
     console.warn(`query ${i} done`);
 
@@ -99,8 +103,11 @@ const createDB = async (impl, setIsLoading) => {
 }
 
 /**
+ * @typedef {'small-async' | 'big-async' | 'big-sync' | 'small-sync'} QuerySize
+ */
+/**
  * @param {SQLiteImpl} impl
- * @param {'small' | 'big'} size
+ * @param {QuerySize} size
  * @param {(arg0: boolean) => void} setIsLoading
  * @param {(arg0: Time) => void} setTimes
  */
@@ -178,17 +185,30 @@ export default function App() {
           onPress={() => createDB(impl.impl, setIsLoading,)}
         />
         <Button
-          title="Query DB Big"
+          title="Query DB Big Async"
           disabled={isLoading}
-          onPress={() => query(impl.impl, 'big', setIsLoading, setTimes)}
+          onPress={() => query(impl.impl, 'big-async', setIsLoading, setTimes)}
+        />
+        <Button
+          title="Query DB Big Sync"
+          disabled={isLoading || !impl.impl.querySync}
+          onPress={() => query(impl.impl, 'big-sync', setIsLoading, setTimes)}
         />
         <Button
           title="Query DB Small"
           disabled={isLoading}
-          onPress={() => query(impl.impl, 'small', setIsLoading, setTimes)}
+          onPress={() => query(impl.impl, 'small-async', setIsLoading, setTimes)}
+        />
+        <Button
+          title="Query DB Small Sync"
+          disabled={isLoading || !impl.impl.querySmallSync}
+          onPress={() => query(impl.impl, 'small-sync', setIsLoading, setTimes)}
         />
         {isLoading && <ActivityIndicator color="white" />}
 
+        {!!times.size && (
+          <Text style={styles.big}>Query size: {times.size}</Text>
+        )}
         {!!times.load.length && (
           <Text style={styles.big}>
             Load{" "}

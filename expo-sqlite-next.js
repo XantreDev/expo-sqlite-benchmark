@@ -60,10 +60,16 @@ export const SQLiteNext = {
       },
     )
   },
+  querySync() {
+    return dbNext.getAllSync("SELECT * FROM Test;");
+  },
   async query() {
     return await dbNext.getAllAsync("SELECT * FROM Test;");
   },
+  querySmallSync() {
+    return dbNext.getAllSync(SMALL_QUERY);
+  },
   async querySmall() {
     return await dbNext.getAllAsync(SMALL_QUERY);
-  }
+  },
 }
